@@ -21,6 +21,10 @@ Screen Dimmer creates a fullscreen translucent overlay using the Wayland layer-s
 * CMake
 * C++20 compatible compiler
 
+## Demo
+
+![Demo](screenshots/demo.gif)
+
 ### Arch Linux / EndeavourOS
 
 ```bash

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Screen Dimmer
+Exec=/home/%u/.local/bin/screen-dimmer
+Terminal=false
+StartupNotify=false

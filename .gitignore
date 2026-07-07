@@ -1,0 +1,28 @@
+# Build artifacts
+build/
+cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# Qt
+*_autogen/
+moc_*
+ui_*
+qrc_*
+
+# Editors
+.vscode/
+.idea/
+
+# Swap files
+*.swp
+*.swo
+*~
+
+# Executables
+screen-dimmer

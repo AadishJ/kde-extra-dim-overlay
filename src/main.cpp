@@ -1,7 +1,11 @@
 #include <QApplication>
+#include <QDir>
+#include <QFile>
 #include <QPainter>
 #include <QScreen>
 #include <QSocketNotifier>
+#include <QStandardPaths>
+#include <QTextStream>
 #include <QWidget>
 #include <QWindow>
 
@@ -11,6 +15,26 @@
 #include <memory>
 #include <unistd.h>
 #include <vector>
+
+int currentAlpha = 150; // 0-255
+
+QString levelFilePath() {
+  QString dir = QStandardPaths::writableLocation(
+      QStandardPaths::GenericConfigLocation) + "/screen-dimmer";
+  QDir().mkpath(dir);
+  return dir + "/level";
+}
+
+void loadAlphaFromFile() {
+  QFile f(levelFilePath());
+  if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+    return;
+  QTextStream in(&f);
+  bool ok = false;
+  int value = in.readLine().trimmed().toInt(&ok);
+  if (ok && value >= 0 && value <= 255)
+    currentAlpha = value;
+}
 
 class Overlay : public QWidget {
 public:
@@ -48,7 +72,7 @@ public:
 protected:
   void paintEvent(QPaintEvent *) override {
     QPainter p(this);
-    p.fillRect(rect(), QColor(0, 0, 0, 150));
+    p.fillRect(rect(), QColor(0, 0, 0, currentAlpha));
   }
 };
 
@@ -57,14 +81,19 @@ bool visible = false;
 
 int signalPipe[2];
 
-void signalHandler(int) {
-  char c = 1;
+void signalHandler(int sig) {
+  char c = static_cast<char>(sig);
   write(signalPipe[1], &c, 1);
 }
 
 void updateVisibility() {
   for (auto &overlay : overlays)
     overlay->setVisible(visible);
+}
+
+void repaintAll() {
+  for (auto &overlay : overlays)
+    overlay->update();
 }
 
 void toggleOverlay() {
@@ -74,6 +103,8 @@ void toggleOverlay() {
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
+
+  loadAlphaFromFile();
 
   for (QScreen *screen : app.screens())
     overlays.emplace_back(std::make_unique<Overlay>(screen));
@@ -89,13 +120,19 @@ int main(int argc, char *argv[]) {
   sa.sa_flags = SA_RESTART;
 
   sigaction(SIGUSR1, &sa, nullptr);
+  sigaction(SIGUSR2, &sa, nullptr);
 
   auto *notifier = new QSocketNotifier(signalPipe[0], QSocketNotifier::Read);
 
   QObject::connect(notifier, &QSocketNotifier::activated, [](int) {
     char c;
     read(signalPipe[0], &c, 1);
-    toggleOverlay();
+    if (c == SIGUSR1) {
+      toggleOverlay();
+    } else if (c == SIGUSR2) {
+      loadAlphaFromFile();
+      repaintAll();
+    }
   });
 
   return app.exec();
